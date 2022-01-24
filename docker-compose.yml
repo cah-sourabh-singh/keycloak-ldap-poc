@@ -1,0 +1,76 @@
+version: "3"
+
+services:
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password
+    ports:
+      - 5432:5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - webnet
+  pgadmin:
+    image: dpage/pgadmin4
+    logging:
+      driver: none
+    restart: always
+    networks:
+      - webnet
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: root
+    ports:
+      - 3051:80
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+  nginx:
+    restart: always
+    build:
+      dockerfile: Dockerfile
+      context: ./nginx
+    ports:
+      - 3050:80
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    environment:
+      DB_VENDOR: POSTGRES
+      DB_ADDR: postgres
+      DB_DATABASE: keycloak
+      DB_USER: keycloak
+      DB_SCHEMA: public
+      DB_PASSWORD: password
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: Pa55w0rd
+      KEYCLOAK_FRONTEND_URL: "http://localhost:3050/auth"
+      PROXY_ADDRESS_FORWARDING: "true"
+    networks:
+      - webnet
+    ports:
+      - 8080:8080
+    depends_on:
+      - postgres
+  openldap:
+    image: docker.io/bitnami/openldap:2.5
+    ports:
+      - '1389:1389'
+      - '1636:1636'
+    environment:
+      - LDAP_ADMIN_USERNAME=admin
+      - LDAP_ADMIN_PASSWORD=adminpassword
+      - LDAP_USERS=user01,user02
+      - LDAP_PASSWORDS=password1,password2
+    volumes:
+      - 'openldap:/bitnami/openldap'
+networks:
+  webnet:
+volumes:
+  pgdata:
+    driver: local
+  pgadmin:
+    driver: local
+  openldap:
+    driver: local
